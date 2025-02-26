@@ -1,0 +1,10 @@
+ccxt
+pandas
+numpy
+tqdm
+cctx
+seaborn
+matplotlib
+hmmlearn
+scikit-learn
+scipy
