@@ -1,97 +1,156 @@
-.
-├── kimchi_main.py # Main script for backtesting & forward testing
-├── utils
-│ ├── data.py # Data loading and splitting
-│ ├── funding_generator.py # Monte Carlo funding-rate scenario generation
-│ ├── metrics.py # Performance metrics (Sharpe, CAGR, etc.)
-│ ├── config.py # Trading configuration (leverage, stop-loss, etc.)
-│ └── technical_indicators.py # Technical indicators (ATR, ADX, etc.)
-├── visualization
-│ └── plots.py # Visualization functions (heatmaps, equity curves)
-├── data
-│ ├── raw # Directory for raw CSV data
-│ └── results # Directory for backtest/plots output
-└── README.md # This document
+# Cryptocurrency Trading System with Kimchi Momentum Strategy
 
-File Descriptions
+This repository contains a comprehensive system for cryptocurrency data collection, analysis, and algorithmic trading, implementing a "Kimchi Momentum" strategy that utilizes price movements in Korean markets to predict and trade on global exchanges.
 
-1. kimchi_main.py
-   Main execution script performing:
+## Project Overview
 
-Data loading (load_data) and train/test split (split_data)
-Funding scenarios generation (create_funding_scenarios)
-Parameter grid definitions for (X, Y)
-Parallelized backtesting (ProcessPoolExecutor) over multiple scenarios
-Optimal parameter selection based on Sharpe Ratio
-Forward testing and plotting (heatmaps and equity curves)
-It contains the main() function. Run via:
+The system implements:
+- Data collection from multiple exchanges (Binance, Upbit)
+- Market volatility regime detection and analysis
+- Dynamic position sizing and risk management
+- Optimized trading parameters through Monte Carlo simulations
+- Backtesting framework with performance analytics
 
-python kimchi_main.py
-Key function:
+## Key Components
 
-compute_daily_strategy_returns(): Generates signals based on X and Y thresholds and calculates the daily returns. 2. utils/data.py
-Handles data input/output.
-Key functions:
-load_data(data_path):
-Reads CSV files (upbit_price.csv, binance_perpetual.csv, binance_funding.csv) from data_path, merges them into a single price_df, and returns (price_df, funding_df).
-split_data(df, ratio):
-Splits the input DataFrame into train and test sets by a given ratio. 3. utils/funding_generator.py
-Responsible for Monte Carlo funding-rate scenarios.
-Key functions:
-create_realistic_funding_data(price_df, seed):
-Creates a single funding-rate series, resampled to 8-hour intervals, using a mean-reverting process within a range of -0.1% to +0.1%.
-create_funding_scenarios(price_df, n_scenarios):
-Generates multiple (n_scenarios) funding scenarios and returns them as a list of DataFrames. 4. utils/metrics.py
-Computes performance metrics for backtesting.
-Key function:
-calc_metrics(daily_ret):
-Given a daily returns series, calculates:
-Sharpe Ratio
-CAGR
-Sortino Ratio
-Maximum Drawdown
-Win Rate 5. utils/technical_indicators.py
-Contains logic for technical indicators such as ATR and ADX.
-Key functions:
-calculate_atr(data, window): Computes the Average True Range (ATR).
-calculate_adx(data, window): Computes the Average Directional Movement Index (ADX). 6. utils/config.py
-Defines a TradingConfig dataclass that bundles parameters like:
-initial_capital, leverage, daily_stop_loss
-maker_fee, taker_fee, slippage
-Additional technical indicator settings (RSI, Bollinger Bands, MACD).
-By adjusting this configuration object, you can modify the risk and fee settings globally.
+### 1. Data Collection (DataFetcher)
 
-7. visualization/plots.py
-   Provides visualization functions for backtest results:
-   plot_sharpe_heatmap(results_matrix, X_list, Y_list, save_path, ...):
-   Creates a Seaborn heatmap of Sharpe Ratios, marking the best parameter combination with a star, and shows the top 5 parameter sets.
-   plot_equity_curve(equity_curves, save_path, ...):
-   Plots multiple equity curves from different funding scenarios on the same chart, optionally highlighting percentile bands.
-   Additional utility plots (e.g., drawdown analysis, distribution of returns).
-   How to Use
-   Data Preparation
+The `DataFetcher` class optimizes data retrieval from cryptocurrency exchanges using:
+- **Multithreaded execution** via ThreadPoolExecutor for parallel API requests
+- **Exponential backoff** retry mechanism for handling API failures
+- **Chunked data processing** to handle large time ranges efficiently
+- **Progress tracking** with tqdm for monitoring data collection
 
-Place CSV files named upbit_price.csv, binance_perpetual.csv, and binance_funding.csv in the data/raw/ folder.
-Make sure each CSV includes a timestamp column (parsed as DateTime) and a close column.
-The load_data function reads these and merges them into a single DataFrame.
-Running the Strategy
+```python
+def fetch_parallel(self, exchange, symbol: str, chunks: List[Tuple[int, int]]) -> pd.DataFrame:
+    all_candles = []
+    
+    with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+        futures = {executor.submit(self._fetch_chunk, exchange, symbol, c[0], c[1]): c for c in chunks}
+        # Process results as they complete
+        for future in as_completed(futures):
+            # Result processing...
+```
 
-In a Python 3.8+ environment, install necessary packages (numpy, pandas, matplotlib, seaborn, tqdm).
-Run:
-python kimchi_main.py
-The console will display the train/test results, best parameters, Sharpe Ratio, etc.
-Result plots (heatmap, equity curves) will be saved under data/results/.
-Modifying Parameters
+### 2. Kimchi Momentum Strategy
 
-To change the Monte Carlo scenarios (number of funding scenarios), update:
+The strategy captures momentum from Korean markets (Upbit) to execute trades on global markets (Binance) with:
+- **Directional volatility analysis** that separately calculates volatility for uptrends and downtrends
+- **Dynamic risk management** with state-dependent position sizing
+- **Adaptive stop-loss mechanisms** based on market conditions
+- **Monte Carlo optimization** using parallel processing to find optimal X and Y parameters
 
-create_funding_scenarios(price_df_train, n_scenarios=5)
-To adjust (X, Y) search ranges, modify:
+```python
+def compute_position_size(capital: float, price: float, position_type: str,
+                        vol_30d: float, funding_rate: float, up_vol: float, 
+                        down_vol: float, trend_strength: float, 
+                        is_extreme_market: bool, config: TradingConfig) -> float:
+    # Dynamic position sizing based on market conditions
+    # ...
+```
 
-X_list = np.arange(0.01, 0.06, 0.01)
-Y_list = np.arange(0.01, 0.06, 0.01)
-Or change the training/test split ratio in:
+### 3. Technical Indicators and Market Analysis
 
-Dynamic leverage handing
+The system employs various technical indicators and analysis methods:
+- **Average True Range (ATR)** for measuring volatility
+- **Average Directional Index (ADX)** for trend strength analysis
+- **Trend strength calculation** to detect market regime changes
+- **Extreme market detection** to manage risk during unusual market conditions
 
-Implement dynamic leverage adjustments using Hidden Markov Models (HMM) and Particle Filters to better respond to changing market conditions and optimize risk management.
+## Performance Considerations
+
+- The strategy simulation is optimized with multiprocessing for Monte Carlo analysis
+- Data collection utilizes multithreading for efficient API interactions
+- The current implementation balances computational efficiency with strategy robustness
+
+## Requirements
+
+- Python 3.8+
+- pandas, numpy, scipy
+- matplotlib, seaborn for data visualization
+- ccxt for exchange API connections
+- concurrent.futures for parallel processing
+- tqdm for progress tracking
+- sklearn for machine learning models (for future enhancements)
+
+## Advanced Visualization
+
+The system includes comprehensive visualization tools for strategy analysis and performance evaluation:
+
+### 1. Performance Heatmaps
+```python
+def plot_sharpe_heatmap(results_matrix: np.ndarray, 
+                       X_list: Union[List[float], np.ndarray], 
+                       Y_list: Union[List[float], np.ndarray], 
+                       save_path: Union[str, Path],
+                       title: Optional[str] = None) -> None:
+    # Creates enhanced heatmap showing Sharpe ratio across parameter combinations
+    # Highlights optimal parameters and includes top 5 parameter combinations
+```
+
+### 2. Equity Curve Analysis
+```python
+def plot_equity_curve(equity_curves: List[pd.Series], 
+                     save_path: Union[str, Path],
+                     title: Optional[str] = None,
+                     show_percentiles: bool = True) -> None:
+    # Plots multiple equity curves with percentile bands
+    # Shows strategy performance variability across different scenarios
+```
+
+### 3. Returns Distribution
+```python
+def plot_returns_distribution(returns: pd.Series,
+                            save_path: Union[str, Path],
+                            title: Optional[str] = None) -> None:
+    # Visualizes the distribution of strategy returns
+    # Compares actual returns to normal distribution
+```
+
+### 4. Drawdown Analysis
+```python
+def plot_drawdown_periods(equity_curve: pd.Series,
+                         save_path: Union[str, Path],
+                         title: Optional[str] = None) -> None:
+    # Analyzes and visualizes drawdown periods
+    # Shows both equity curve and drawdown percentage
+```
+
+## Technical Indicators and Analysis Tools
+
+The system includes implementations of various technical indicators and analysis tools:
+
+### Technical Indicators
+- Average True Range (ATR) for volatility measurement
+- Average Directional Index (ADX) for trend strength analysis
+- Directional volatility analysis (separate metrics for up/down moves)
+- Trend strength calculation combining multiple factors
+
+### Visualization Tools
+The system provides comprehensive visualization capabilities to analyze strategy performance:
+- Parameter optimization heatmaps with best parameter highlighting
+- Multi-scenario equity curves with percentile bands
+- Return distribution analysis with normal distribution comparison
+- Drawdown period visualization and analysis
+
+## Getting Started
+
+1. Setup your API keys in configuration
+2. Run data collection to gather historical data:
+   ```
+   python src/data_fetcher.py
+   ```
+3. Execute backtests to identify optimal parameters:
+   ```
+   python src/kimchi_main.py
+   ```
+4. Analyze results using the visualization tools:
+   ```
+   python src/analyze_results.py
+   ```
+5. Deploy the strategy with appropriate risk settings
+
+## References
+
+- Future implementation of auxiliary particle filtering could be based on "Simulation-based sequential analysis of Markov switching stochastic volatility models" by Carvalho and Lopes
+- The dynamic position sizing methodology is custom-developed for cryptocurrency markets with high volatility
