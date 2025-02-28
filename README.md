@@ -1,4 +1,12 @@
-# Cryptocurrency Trading System with Kimchi Momentum Strategy
+## Requirements
+
+- Python 3.8+
+- pandas, numpy, scipy
+- matplotlib, seaborn for data visualization
+- ccxt for exchange API connections
+- concurrent.futures for parallel processing
+- tqdm for progress tracking
+- sklearn for machine learning models (for future enhancements)# Cryptocurrency Trading System with Kimchi Momentum Strategy
 
 This repository contains a comprehensive system for cryptocurrency data collection, analysis, and algorithmic trading, implementing a "Kimchi Momentum" strategy that utilizes price movements in Korean markets to predict and trade on global exchanges.
 
@@ -39,6 +47,7 @@ The strategy captures momentum from Korean markets (Upbit) to execute trades on 
 - **Dynamic risk management** with state-dependent position sizing
 - **Adaptive stop-loss mechanisms** based on market conditions
 - **Monte Carlo optimization** using parallel processing to find optimal X and Y parameters
+- **Robust backtesting methodology** that carefully avoids look-ahead bias and data-snooping bias
 
 ```python
 def compute_position_size(capital: float, price: float, position_type: str,
@@ -63,15 +72,11 @@ The system employs various technical indicators and analysis methods:
 - Data collection utilizes multithreading for efficient API interactions
 - The current implementation balances computational efficiency with strategy robustness
 
-## Requirements
+## References
 
-- Python 3.8+
-- pandas, numpy, scipy
-- matplotlib, seaborn for data visualization
-- ccxt for exchange API connections
-- concurrent.futures for parallel processing
-- tqdm for progress tracking
-- sklearn for machine learning models (for future enhancements)
+- Future implementation of auxiliary particle filtering could be based on "Simulation-based sequential analysis of Markov switching stochastic volatility models" by Carvalho and Lopes
+- The dynamic position sizing methodology is custom-developed for cryptocurrency markets with high volatility
+- Backtesting methodology follows best practices as outlined in "Advances in Financial Machine Learning" by Marcos Lopez de Prado
 
 ## Advanced Visualization
 
@@ -150,7 +155,22 @@ The system provides comprehensive visualization capabilities to analyze strategy
    ```
 5. Deploy the strategy with appropriate risk settings
 
-## References
+## Methodological Considerations
 
-- Future implementation of auxiliary particle filtering could be based on "Simulation-based sequential analysis of Markov switching stochastic volatility models" by Carvalho and Lopes
-- The dynamic position sizing methodology is custom-developed for cryptocurrency markets with high volatility
+The system incorporates several methodological safeguards to ensure reliable backtesting results:
+
+### Avoiding Look-Ahead Bias
+- Strict time-series data processing that ensures all decisions use only information available at that point in time
+- Proper feature engineering with rolling windows that prevent future data leakage
+- Sequential processing of market data that mimics real-time trading conditions
+
+### Preventing Data-Snooping Bias
+- Train-test split methodology (50:50 ratio) to validate strategy performance on unseen data
+- Monte Carlo simulations with multiple funding rate scenarios to test robustness
+- Out-of-sample validation to confirm parameter selection is not simply curve-fitting
+- Confidence intervals reporting for all performance metrics
+
+### Cross-Validation Methods
+- Forward testing on unseen data periods
+- Multiple scenario testing to ensure strategy doesn't rely on specific market conditions
+- Reporting of standard deviation across scenarios to measure stability
